@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>تنبؤ بأسعار العقار - beta</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* خلفية هادئة بتدرج أزرق ورمادي */
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #edf2f7, #fff);
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    /* حاوية رئيسية مع تأثير زجاجي */
+    .container {
+      max-width: 800px;
+      margin: 3rem auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 2rem;
+      overflow: hidden;
+      animation: fadeIn 1s ease-out;
+      position: relative;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    /* عنصر النسخة في أعلى يمين الحاوية */
+    .version {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 1rem;
+      color: #666;
+    }
+    h1 {
+      text-align: center;
+      color: #2d3748;
+      font-size: 2.8rem;
+      margin-bottom: 1.5rem;
+      animation: slideIn 1s ease-out;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    label {
+      display: block;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #4a5568;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s, transform 0.3s;
+      background: #fff;
+    }
+    input:focus, select:focus {
+      border-color: #3182ce;
+      transform: scale(1.02);
+      outline: none;
+    }
+    button {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: #3182ce;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+      position: relative;
+    }
+    button:hover {
+      background: #2b6cb0;
+      transform: translateY(-3px);
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-top: 4px solid #3182ce;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .result {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f7fafc;
+      border-left: 4px solid #3182ce;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      opacity: 0;
+      animation: resultFadeIn 0.5s forwards;
+    }
+    @keyframes resultFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 600px) {
+      .container {
+        margin: 1rem;
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      button {
+        font-size: 1rem;
+      }
+      .version {
+        font-size: 0.8rem;
+        top: 5px;
+        right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="version">beta</div>
+    <h1>تنبؤ بأسعار العقار</h1>
+    <form id="predictForm">
+      <label for="area">المساحة (متر مربع):</label>
+      <input type="number" id="area" step="any" required>
+      <label for="type">النوع:</label>
+      <select id="type">
+        <option value="سكني">سكني</option>
+        <option value="تجاري">تجاري</option>
+        <option value="زراعي">زراعي</option>
+      </select>
+      <label for="city">المدينة:</label>
+      <select id="city">
+        <option value="الرياض">الرياض</option>
+        <option value="جدة">جدة</option>
+        <option value="الدمام">الدمام</option>
+      </select>
+      <button type="submit">
+        احسب السعر
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </form>
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+    document.getElementById('predictForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      document.getElementById('spinner').style.display = 'block';
+      const area = document.getElementById('area').value;
+      const type = document.getElementById('type').value;
+      const city = document.getElementById('city').value;
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ "المساحة": parseFloat(area), "النوع": type, "المدينة": city })
+        });
+        const data = await response.json();
+        document.getElementById('result').innerText = 
+          `السعر المتوقع: ${data["السعر المتوقع"]}\nالحد الآمن للمزايدة: ${data["الحد الآمن للمزايدة"]}`;
+      } catch (error) {
+        document.getElementById('result').innerText = "حدث خطأ أثناء حساب السعر.";
+      } finally {
+        document.getElementById('spinner').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
